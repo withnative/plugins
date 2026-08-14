@@ -13,29 +13,71 @@ durable workspace context and continue work through Native's hosted MCP service.
 package provides product metadata, one entry skill, and an authenticated connection to
 `https://plugin.withnative.ai/mcp`.
 
-## Install
+## Start here
 
-ChatGPT/Codex:
+- **Setting up Native?** [Follow the setup guide](docs/plugin-installation.md).
+- **Understanding how it is delivered?** Read [the architecture](#architecture).
+- **Inspecting the catalogue?** See [the repository layout](#repository-layout) and
+  [validation command](#repository-layout).
 
-```sh
-codex plugin marketplace add withnative/plugins
-codex plugin add native@withnative
+## Quickstart for humans
+
+Give this instruction to Claude or ChatGPT/Codex, on desktop or CLI:
+
+```text
+Open https://github.com/withnative/plugins and follow the setup guide for the Native plugin.
 ```
 
-Claude Code:
+The agent should identify the client it is running in, install Native using that client's
+plugin tools and explain any required restart or reload.
+
+If installation requires a reload or restart, continue in a fresh conversation with:
+
+```text
+Use Native's quickstart tool to help me finish setting up Native.
+```
+
+For manual installation, supported surfaces, updates, troubleshooting and removal, use
+the [setup guide](docs/plugin-installation.md).
+
+## Quickstart for agents
+
+If a user asks you to set up Native from this repository, inspect the local client before
+deciding installation is unavailable. If shell access is available, perform the setup
+yourself using the client's non-interactive plugin CLI.
+
+**Claude Code and its desktop application:**
 
 ```sh
 claude plugin marketplace add withnative/plugins
 claude plugin install native@withnative
 ```
 
-Start a new conversation after installation and ask the agent to use Native, or invoke
-`/native:enter` explicitly. The host owns OAuth: never paste a bearer token into the
-plugin or its files.
+**ChatGPT/Codex Desktop and Codex CLI:**
 
-Repository-installed plugin availability varies by client surface. Desktop and CLI
-routes are the initial baseline; browser and mobile routes must be verified on the
-specific account and client before support is claimed.
+```sh
+codex plugin marketplace add withnative/plugins
+codex plugin add native@withnative
+```
+
+Check existing marketplace, plugin and MCP state before adding anything. Verify the
+installed plugin afterwards and follow any restart or reload instruction reported by the
+client.
+
+Do not substitute a curated plugin-catalogue search for the repository the user supplied.
+Do not send the user to interactive slash commands when you have shell access to the
+non-interactive CLI.
+
+If installation requires a restart or reload, give the user this copyable continuation
+prompt before ending the conversation:
+
+```text
+Use Native's quickstart tool to help me finish setting up Native.
+```
+
+For existing installations, duplicate MCP connections, GUI alternatives, updates,
+troubleshooting and removal, follow the
+[complete setup guide](docs/plugin-installation.md).
 
 ## Architecture
 
