@@ -20,6 +20,8 @@ describe('authentication state', () => {
     expect(stateRoot({}, 'darwin', '/Users/alice')).toBe('/Users/alice/Library/Application Support/Native/mcp-stdio')
     expect(stateRoot({ LOCALAPPDATA: 'C:\\Users\\alice\\AppData\\Local' }, 'win32', 'C:\\Users\\alice')).toContain('Native')
     expect(() => stateRoot({ NATIVE_MCP_STDIO_CONFIG_DIR: 'relative' }, 'linux', '/home/alice')).toThrow('absolute path')
+    expect(() => stateRoot({ NATIVE_MCP_STDIO_CONFIG_DIR: '/' }, 'linux', '/home/alice')).toThrow('unsafe broad directory')
+    expect(() => stateRoot({ NATIVE_MCP_STDIO_CONFIG_DIR: '/home/alice' }, 'linux', '/home/alice')).toThrow('unsafe broad directory')
   })
 
   it('is concurrency-safe and hardens directories and credential files', async () => {
@@ -57,7 +59,31 @@ describe('authentication state', () => {
     await mkdir(root)
     await mkdir(target)
     await symlink(target, path.join(root, 'auth'))
-    await expect(prepareState(root)).rejects.toThrow('not a real directory')
+    await expect(prepareState(root)).rejects.toThrow('refusing symbolic link')
+  })
+
+  it('rejects a symlink in any existing ancestor without creating through it', async () => {
+    if (process.platform === 'win32') return
+    const base = await temporaryDirectory()
+    const target = path.join(base, 'target')
+    const alias = path.join(base, 'alias')
+    await mkdir(target)
+    await symlink(target, alias)
+    await expect(prepareState(path.join(alias, 'state'))).rejects.toThrow('refusing symbolic link')
+    await expect(lstat(path.join(target, 'state'))).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('rejects a non-directory ancestor and preserves it', async () => {
+    const base = await temporaryDirectory()
+    const file = path.join(base, 'ancestor')
+    await writeFile(file, 'preserve me')
+    await expect(prepareState(path.join(file, 'state'))).rejects.toThrow('not a directory')
+    expect((await lstat(file)).isFile()).toBe(true)
+  })
+
+  it('rejects broad direct roots before attempting any chmod', async () => {
+    await expect(prepareState(path.parse(process.cwd()).root)).rejects.toThrow('unsafe broad directory')
+    await expect(prepareState(os.tmpdir())).rejects.toThrow('unsafe broad directory')
   })
 
   it('refuses to use a regular file as its state directory', async () => {
