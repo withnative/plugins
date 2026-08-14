@@ -21,6 +21,16 @@ ENDPOINT = "https://plugin.withnative.ai/mcp"
 DESCRIPTION = (
     "Recover context and continue durable work through Native's hosted MCP service."
 )
+SURF_DESCRIPTION = (
+    "Use Surf's current learning framework through its stateless MCP server"
+)
+CODEX_SURF_SOURCE = {
+    "source": "git-subdir",
+    "url": "https://github.com/withnative/surf.git",
+    "path": "./plugins/surf",
+    "ref": "main",
+}
+CLAUDE_SURF_SOURCE = {**CODEX_SURF_SOURCE, "path": "plugins/surf"}
 DEFAULT_PROMPT = (
     "Use $enter to recover the relevant context in my Native workspace and help me "
     "continue this work."
@@ -129,7 +139,10 @@ def validate_marketplaces() -> None:
     require(codex.get("name") == "withnative", "Codex marketplace identity drifted")
     require(codex.get("interface") == {"displayName": "Native"}, "Codex display drifted")
     entries = codex.get("plugins")
-    require(isinstance(entries, list) and len(entries) == 1, "Codex catalogue must list one plugin")
+    require(
+        isinstance(entries, list) and len(entries) == 2,
+        "Codex catalogue must list two plugins",
+    )
     require(
         entries[0]
         == {
@@ -140,15 +153,39 @@ def validate_marketplaces() -> None:
         },
         "Codex catalogue entry drifted",
     )
+    require(
+        entries[1]
+        == {
+            "name": "surf",
+            "source": CODEX_SURF_SOURCE,
+            "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+            "category": "Productivity",
+        },
+        "Codex Surf catalogue entry drifted",
+    )
 
     claude = load_json(ROOT / ".claude-plugin" / "marketplace.json")
     require(claude.get("name") == "withnative", "Claude marketplace identity drifted")
     require(claude.get("owner") == {"name": "Native"}, "Claude owner drifted")
     entries = claude.get("plugins")
-    require(isinstance(entries, list) and len(entries) == 1, "Claude catalogue must list one plugin")
+    require(
+        isinstance(entries, list) and len(entries) == 2,
+        "Claude catalogue must list two plugins",
+    )
     require(entries[0].get("name") == "native", "Claude plugin identity drifted")
     require(entries[0].get("source") == "./plugins/native", "Claude source path drifted")
     require(entries[0].get("description") == DESCRIPTION, "Claude description drifted")
+    require(
+        entries[1]
+        == {
+            "name": "surf",
+            "source": CLAUDE_SURF_SOURCE,
+            "description": SURF_DESCRIPTION,
+            "category": "Productivity",
+            "tags": ["learning", "practice", "agents", "mcp"],
+        },
+        "Claude Surf catalogue entry drifted",
+    )
 
 
 def validate_skill() -> None:

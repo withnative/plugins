@@ -3,7 +3,7 @@
   "owner": {
     "name": "Native"
   },
-  "description": "First-party Native plugins for durable work with AI agents",
+  "description": "First-party Native plugins for durable work and learning with AI agents",
   "plugins": [
     {
       "name": "native",
@@ -13,6 +13,23 @@
       "tags": [
         "workspace",
         "context",
+        "agents",
+        "mcp"
+      ]
+    },
+    {
+      "name": "surf",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/withnative/surf.git",
+        "path": "plugins/surf",
+        "ref": "main"
+      },
+      "description": "Use Surf's current learning framework through its stateless MCP server",
+      "category": "Productivity",
+      "tags": [
+        "learning",
+        "practice",
         "agents",
         "mcp"
       ]
