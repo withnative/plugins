@@ -165,3 +165,26 @@ installation checks.
 These routes are supported only on the named desktop and CLI surfaces. Browser-only and
 mobile clients must be verified on the specific account and client before support is
 claimed.
+
+## jcode and other stdio-only clients
+
+jcode reads command-based entries from `~/.jcode/mcp.json` or `.jcode/mcp.json` and skips
+HTTP/SSE entries. Use the independently versioned adapter rather than changing the marketplace
+plugin:
+
+```json
+{
+  "mcpServers": {
+    "native": {
+      "command": "npx",
+      "args": ["-y", "@withnative/mcp-stdio@0.1.0"],
+      "env": {},
+      "shared": true
+    }
+  }
+}
+```
+
+See [`packages/mcp-stdio/README.md`](../packages/mcp-stdio/README.md) for pre-auth,
+credential removal, fixed-port SSH forwarding, and adapter troubleshooting. The adapter
+still reaches the hosted Native service; it does not install a second tool set.
