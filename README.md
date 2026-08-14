@@ -13,25 +13,43 @@ durable workspace context and continue work through Native's hosted MCP service.
 package provides product metadata, one entry skill, and an authenticated connection to
 `https://plugin.withnative.ai/mcp`.
 
-## Install
+## Install Native
 
-ChatGPT/Codex:
+The simplest route is to paste this into **ChatGPT/Codex Desktop** or **Claude Code**:
+
+```text
+Install the Native plugin from https://github.com/withnative/plugins and use the quickstart tool
+```
+
+If you prefer deterministic steps, each surface installs with two shell commands.
+
+**ChatGPT/Codex Desktop** (the install verb is `add`):
 
 ```sh
 codex plugin marketplace add withnative/plugins
 codex plugin add native@withnative
 ```
 
-Claude Code:
+**Claude Code** (the install verb is `install`; the default scope is `user`):
 
 ```sh
 claude plugin marketplace add withnative/plugins
 claude plugin install native@withnative
 ```
 
-Start a new conversation after installation and ask the agent to use Native, or invoke
-`/native:enter` explicitly. The host owns OAuth: never paste a bearer token into the
-plugin or its files.
+Restart the app afterwards, then start a new conversation and say
+`Help me get started with Native.` The installed entry skill calls `quickstart` and then
+`bootstrap` for first-use onboarding. The host opens Native's OAuth sign-in flow; sign in
+there and never paste a bearer token into the conversation, plugin, or its files.
+
+You can invoke the plugin explicitly as `@native` in ChatGPT/Codex Desktop, select the
+skill as `$enter` where an OpenAI client exposes skill selectors, or use `/native:enter`
+in Claude Code. Ordinary requests such as `What is current in my Native workspace?` can
+activate it too.
+
+[Read the canonical installation guide](docs/plugin-installation.md) for in-product
+installation, exact updates, uninstall, recovery, compatibility, and duplicate-connection
+guidance.
 
 Repository-installed plugin availability varies by client surface. Desktop and CLI
 routes are the initial baseline; browser and mobile routes must be verified on the
