@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 """Validate the first-party Native plugin catalogues and thin package contract."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -20,6 +25,14 @@ DEFAULT_PROMPT = (
     "Use $enter to recover the relevant context in my Native workspace and help me "
     "continue this work."
 )
+MPL_2_0_SHA256 = "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+MPL_NOTICE = (
+    "This Source Code Form is subject to the terms of the Mozilla Public\n"
+    "License, v. 2.0. If a copy of the MPL was not distributed with this\n"
+    "file, You can obtain one at https://mozilla.org/MPL/2.0/."
+)
+HASH_NOTICE = "\n".join(f"# {line}" for line in MPL_NOTICE.splitlines()) + "\n"
+HTML_NOTICE = f"<!--\n{MPL_NOTICE}\n-->\n"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -34,6 +47,39 @@ def load_json(path: Path) -> dict[str, Any]:
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
+
+
+def validate_license() -> None:
+    license_digest = hashlib.sha256((ROOT / "LICENSE").read_bytes()).hexdigest()
+    require(
+        license_digest == MPL_2_0_SHA256,
+        "LICENSE must contain the canonical, unmodified MPL 2.0 text",
+    )
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    require(readme.startswith(HTML_NOTICE), "README is missing the MPL Exhibit A notice")
+    require(
+        "contents of this repository—including JSON and other\n"
+        "formats that do not support comments—are licensed under the [Mozilla Public License\n"
+        "2.0](LICENSE) (`MPL-2.0`)." in readme,
+        "README must declare MPL-2.0 coverage for commentless formats",
+    )
+    require(
+        "Copyright © 2026 AI Native Work, Inc." in readme,
+        "README copyright notice drifted",
+    )
+
+    notice_prefixes = {
+        ROOT / ".github" / "workflows" / "validate.yml": HASH_NOTICE,
+        ROOT / ".gitignore": HASH_NOTICE,
+        PLUGIN / "skills" / "enter" / "agents" / "openai.yaml": HASH_NOTICE,
+        ROOT / "scripts" / "validate.py": f"#!/usr/bin/env python3\n{HASH_NOTICE}",
+    }
+    for path, prefix in notice_prefixes.items():
+        require(
+            path.read_text(encoding="utf-8").startswith(prefix),
+            f"{path.relative_to(ROOT)} is missing the MPL Exhibit A notice",
+        )
 
 
 def validate_manifests() -> None:
@@ -140,6 +186,7 @@ def validate_thin_boundary() -> None:
 
 def main() -> int:
     checks = (
+        validate_license,
         validate_manifests,
         validate_mcp,
         validate_marketplaces,

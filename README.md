@@ -1,3 +1,9 @@
+<!--
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at https://mozilla.org/MPL/2.0/.
+-->
+
 # Native plugins
 
 This repository is the first-party catalogue for Native plugins and workflow packs.
@@ -79,3 +85,11 @@ Run the repository checks with:
 ```sh
 python3 scripts/validate.py
 ```
+
+## License
+
+Except where otherwise noted, the contents of this repository—including JSON and other
+formats that do not support comments—are licensed under the [Mozilla Public License
+2.0](LICENSE) (`MPL-2.0`).
+
+Copyright © 2026 AI Native Work, Inc.
