@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "native": {
+      "type": "http",
+      "url": "https://plugin.withnative.ai/mcp"
+    }
+  }
+}

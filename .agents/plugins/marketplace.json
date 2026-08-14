@@ -1,0 +1,20 @@
+{
+  "name": "withnative",
+  "interface": {
+    "displayName": "Native"
+  },
+  "plugins": [
+    {
+      "name": "native",
+      "source": {
+        "source": "local",
+        "path": "./plugins/native"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
