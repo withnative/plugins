@@ -4,47 +4,62 @@ License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at https://mozilla.org/MPL/2.0/.
 -->
 
-# Native plugins
+# Native
 
-This repository is the first-party catalogue for Native plugins and workflow packs.
+**Bring your Native workspace into the conversations where work happens.**
 
-The first package is **Native**, a thin distribution layer that helps an agent recover
-durable workspace context and continue work through Native's hosted MCP service. The
-package provides product metadata, one entry skill, and an authenticated connection to
-`https://plugin.withnative.ai/mcp`.
+Native is a workspace for durable context: current work, decisions, documents and the
+relationships between them. The Native plugin lets a supported agent connect to the
+workspace you authorise, recover what is current and continue work with you across
+conversations.
 
-## Start here
+This repository is Native's first-party plugin catalogue. Its first package is
+`native@withnative`, published and maintained by [Native](https://www.withnative.ai/).
 
-- **Setting up Native?** [Follow the setup guide](docs/plugin-installation.md).
-- **Understanding how it is delivered?** Read [the architecture](#architecture).
-- **Inspecting the catalogue?** See [the repository layout](#repository-layout) and
-  [validation command](#repository-layout).
+## What Native does
 
-## Quickstart for humans
+Once connected, Native gives an agent an inspectable source of durable workspace context.
+Depending on your request and permissions, the agent can recover current work, find and
+summarise records, or create and update workspace content. The hosted service remains the
+authoritative source for workspace state and current Native guidance.
 
-Give this instruction to Claude or ChatGPT/Codex, on desktop or CLI:
+## What the plugin installs
+
+The plugin is intentionally small. It adds:
+
+- the `native:enter` skill, which activates Native when you ask to use or set it up; and
+- an HTTPS MCP connection to `https://plugin.withnative.ai/mcp`.
+
+It does not install a local executable or shell hooks. It contains no bearer token,
+copied workspace data or server implementation. Installing the plugin changes your local
+Claude or Codex plugin configuration; it does not by itself read, write or delete
+anything in a Native workspace.
+
+## Trust and control
+
+Your client manages Native's OAuth sign-in. You complete authorisation in the window the
+client opens; never paste a bearer token into a conversation, plugin file or repository
+issue.
+
+Once authorised, Native's tools can access the workspace data available to your account.
+The agent uses those tools within your request and the permissions returned by Native.
+Installing or activating the plugin does not start autonomous work.
+
+Removing the plugin removes the local skill and connection. It does not delete data held
+by Native. Your AI provider still processes the conversation and tool traffic under its
+own service terms.
+
+## Install Native
+
+Give this instruction to Claude or ChatGPT/Codex on a supported desktop or CLI client:
 
 ```text
-Open https://github.com/withnative/plugins and follow the setup guide for the Native plugin.
+Install the native@withnative plugin from https://github.com/withnative/plugins.
+You may use the local plugin CLI yourself. Verify the installed package afterwards.
+Install it as a plugin, not as a separate standalone MCP connection.
 ```
 
-The agent should identify the client it is running in, install Native using that client's
-plugin tools and explain any required restart or reload.
-
-If installation requires a reload or restart, continue in a fresh conversation with:
-
-```text
-Use Native's quickstart tool to help me finish setting up Native.
-```
-
-For manual installation, supported surfaces, updates, troubleshooting and removal, use
-the [setup guide](docs/plugin-installation.md).
-
-## Quickstart for agents
-
-If a user asks you to set up Native from this repository, inspect the local client before
-deciding installation is unavailable. If shell access is available, perform the setup
-yourself using the client's non-interactive plugin CLI.
+The equivalent manual commands are:
 
 **Claude Code and its desktop application:**
 
@@ -60,24 +75,33 @@ codex plugin marketplace add withnative/plugins
 codex plugin add native@withnative
 ```
 
-Check existing marketplace, plugin and MCP state before adding anything. Verify the
-installed plugin afterwards and follow any restart or reload instruction reported by the
-client.
+Check existing marketplace, plugin and MCP state before adding anything, then verify the
+installed plugin. If an existing standalone connection already targets
+`https://plugin.withnative.ai/mcp`, explain the overlap and ask before changing it.
 
-Do not substitute a curated plugin-catalogue search for the repository the user supplied.
-Do not send the user to interactive slash commands when you have shell access to the
-non-interactive CLI.
+For supported surfaces, GUI alternatives, updates, troubleshooting and removal, use the
+[complete setup guide](docs/plugin-installation.md).
 
-If installation requires a restart or reload, give the user this copyable continuation
-prompt before ending the conversation:
+## After installation
+
+Restart or reload the client if the installation summary asks you to. Restarting ends the
+current conversation context; it does not continue an agent in the background.
+
+In a fresh Claude Code conversation, enter Native explicitly with:
+
+```text
+/native:enter
+```
+
+Or use this ordinary-language prompt on any supported client:
 
 ```text
 Use Native's quickstart tool to help me finish setting up Native.
 ```
 
-For existing installations, duplicate MCP connections, GUI alternatives, updates,
-troubleshooting and removal, follow the
-[complete setup guide](docs/plugin-installation.md).
+Your client may open an OAuth sign-in window. After authorisation, the Native entry skill
+calls `quickstart` once for first-use guidance and then `bootstrap` to orient the
+conversation to your workspace.
 
 ## Architecture
 
