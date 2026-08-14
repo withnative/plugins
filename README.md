@@ -13,8 +13,16 @@ relationships between them. The Native plugin lets a supported agent connect to 
 workspace you authorise, recover what is current and continue work with you across
 conversations.
 
-This repository is Native's first-party plugin catalogue. Its first package is
-`native@withnative`, published and maintained by [Native](https://www.withnative.ai/).
+This repository is Native's first-party plugin catalogue. The `withnative` marketplace
+currently exposes two separately installable packages:
+
+- `native@withnative`, packaged in this repository; and
+- `surf@withnative`, maintained in [withnative/surf](https://github.com/withnative/surf)
+  and fetched from that repository when installed.
+
+Adding the marketplace makes both packages available; it does not install either one.
+Install only the package you want. Both are published and maintained by
+[Native](https://www.withnative.ai/).
 
 ## What Native does
 
@@ -75,6 +83,10 @@ codex plugin marketplace add withnative/plugins
 codex plugin add native@withnative
 ```
 
+To install Surf instead, add the same marketplace and select `surf@withnative`. See the
+[Surf setup guide](https://github.com/withnative/surf) for its complete installation and
+first-use instructions.
+
 Check existing marketplace, plugin and MCP state before adding anything, then verify the
 installed plugin. If an existing standalone connection already targets
 `https://plugin.withnative.ai/mcp`, explain the overlap and ask before changing it.
@@ -118,11 +130,12 @@ https://plugin.withnative.ai/mcp
 independently deployed Native CE service and databases
 ```
 
-This repository owns installation metadata, the stable `/native:enter` activation
-boundary, and the remote connection declaration. The independently deployed Native CE
-service owns OAuth resource-server behaviour, tools, live guidance, permissions, and
-durable data. No server implementation, database, workspace facts, credentials, or
-copied guide corpus belongs in this catalogue.
+This repository owns the shared `withnative` marketplace metadata. It also owns the
+Native package's stable `/native:enter` activation boundary and remote connection
+declaration; Surf's package remains owned by `withnative/surf`. The independently
+deployed Native CE service owns OAuth resource-server behaviour, tools, live guidance,
+permissions, and durable data. No server implementation, database, workspace facts,
+credentials, or copied guide corpus belongs in this catalogue.
 
 The plugin and service can release independently. Their compatibility seam is the MCP
 resource identity, OAuth discovery and audience behaviour, and the core `quickstart`
@@ -145,6 +158,11 @@ plugins/native/
     ├── SKILL.md
     └── agents/openai.yaml
 ```
+
+The two marketplace manifests also reference `plugins/surf` in the separate
+`withnative/surf` repository. That entry tracks its `main` branch. Every Surf release
+must increment the version in both of Surf's plugin manifests before merging so hosts
+store and load it as a new versioned package.
 
 Run the repository checks with:
 

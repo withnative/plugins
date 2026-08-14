@@ -9,6 +9,10 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
 This is the canonical guide for installing, updating, removing, and recovering Native on
 its supported plugin surfaces.
 
+The `withnative` marketplace also makes `surf@withnative` available, but the commands in
+this guide install and manage only `native@withnative`. Adding the marketplace does not
+install either package automatically.
+
 ## Start with the repository link
 
 Paste this into Claude or ChatGPT/Codex, on desktop or CLI:
@@ -138,7 +142,8 @@ claude plugin uninstall native@withnative
 
 To stop tracking the whole Native marketplace as well, run
 `codex plugin marketplace remove withnative` or
-`claude plugin marketplace remove withnative` for the relevant client. Removing the
+`claude plugin marketplace remove withnative` for the relevant client. Do this only when
+you no longer need any package from the marketplace, including Surf. Removing the Native
 plugin removes its packaged skill and connection; it does not delete data held by Native.
 
 ## Recovery and troubleshooting
