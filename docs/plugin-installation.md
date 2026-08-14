@@ -11,16 +11,31 @@ its supported plugin surfaces.
 
 ## Start with the repository link
 
-Paste this into **ChatGPT/Codex Desktop** or **Claude Code**:
+Paste this into Claude or ChatGPT/Codex, on desktop or CLI:
 
 ```text
-Install the Native plugin from https://github.com/withnative/plugins and use the quickstart tool
+Open https://github.com/withnative/plugins and follow the setup guide.
 ```
 
-The agent should inspect this public repository, identify the current client, check for an
-existing Native plugin or standalone connection, use the product-native plugin flow below,
-and verify the result. It must ask before changing an existing standalone Native MCP
-connection.
+### For agents following this guide
+
+Inspect the local marketplace, plugin and MCP state before deciding installation is
+unavailable. If shell access is available, perform the setup yourself with the client's
+non-interactive plugin CLI below. Do not substitute a curated plugin-catalogue search for
+the repository the user supplied, and do not send the user to interactive slash commands
+when you can run the non-interactive CLI.
+
+Ask before changing an existing standalone Native MCP connection. Verify the installed
+plugin afterwards and follow any reload or restart instruction reported by the client. If
+the current conversation cannot load the newly installed plugin, give the user this
+copyable continuation prompt before ending:
+
+```text
+Use Native's quickstart tool to help me finish setting up Native.
+```
+
+If you are on mobile, in a browser-only chat, or on another unlisted surface, use a
+supported desktop or CLI client instead; the plugin flow is not verified there.
 
 ## ChatGPT/Codex Desktop
 
@@ -48,7 +63,8 @@ To install in-product instead:
 Choose one route per host. The CLI and desktop app share the same Codex configuration, so
 installing with both routes can produce duplicate skills and tools.
 
-Start a new conversation and say `Help me get started with Native.` You can invoke Native
+Start a new conversation and say
+`Use Native's quickstart tool to help me finish setting up Native.` You can invoke Native
 explicitly as `@native`, select `$enter` where the client exposes skill selectors, or make
 an ordinary request such as `What is current in my Native workspace?`
 
@@ -70,7 +86,8 @@ it. The equivalent interactive commands are:
 /plugin install native@withnative
 ```
 
-Start a new conversation and say `Help me get started with Native.` To invoke the entry
+Start a new conversation and say
+`Use Native's quickstart tool to help me finish setting up Native.` To invoke the entry
 skill explicitly, use `/native:enter`.
 
 ## Authentication and first use
