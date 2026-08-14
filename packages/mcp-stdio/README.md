@@ -38,6 +38,14 @@ Pre-authorize or diagnose outside jcode with:
 npx -y --package @withnative/mcp-stdio@0.1.0 mcp-stdio-auth
 ```
 
+Do not interrupt the first authorization until stderr shows `Connected successfully!`
+followed by a `Received message:` tools result. Those are the observable success markers:
+the dynamic client registration and tokens have been persisted and hardened by then. Exact
+`mcp-remote@0.1.38` remains open after that successful response because its diagnostic client
+replaces the SDK response handler before its request promise can finish. Press **Ctrl-C once,
+only after those markers**; the wrapper forwards SIGINT, the pinned client cleans up, and the
+command exits normally. This wait is an exact-pin limitation, not a failed authorization.
+
 Complete this pre-authorization once before starting several fresh clients at the same
 time. Concurrent ordinary starts reuse the stored registration and tokens. The pinned
 upstream can race if multiple processes independently attempt the very first browser/DCR
@@ -70,6 +78,7 @@ npx -y --package @withnative/mcp-stdio@0.1.0 \
 ```
 
 Open the printed URL locally if necessary and keep the tunnel until callback completion.
+Wait for the same connected/tools-result success markers before pressing Ctrl-C.
 Use the same `--callback-port 38191` arguments in jcode afterwards.
 
 ## Troubleshooting

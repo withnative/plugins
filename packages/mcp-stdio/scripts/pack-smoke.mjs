@@ -1,7 +1,8 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. */
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
-import { lstat, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { lstat, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
@@ -51,9 +52,62 @@ function stdoutMessages(runtime) {
 
 async function strictFixture() {
   const requests = []
+  let origin = ''
+  let challenge = ''
   const server = http.createServer(async (request, response) => {
-    if (request.method === 'GET') { response.writeHead(request.url === '/mcp' ? 405 : 404); response.end(); return }
-    if (request.method !== 'POST' || request.url !== '/mcp') { response.writeHead(404); response.end(); return }
+    const requestUrl = new URL(request.url ?? '/', origin)
+    const send = (status, value, headers = {}) => {
+      response.writeHead(status, { ...(value === undefined ? {} : { 'content-type': 'application/json' }), ...headers })
+      response.end(value === undefined ? undefined : JSON.stringify(value))
+    }
+    if (request.method === 'GET' && requestUrl.pathname.startsWith('/.well-known/oauth-protected-resource')) {
+      send(200, { resource: 'https://plugin.withnative.ai/mcp', authorization_servers: [origin], scopes_supported: ['openid', 'email', 'profile', 'offline_access'] })
+      return
+    }
+    if (request.method === 'GET' && (requestUrl.pathname === '/.well-known/oauth-authorization-server' || requestUrl.pathname === '/.well-known/openid-configuration')) {
+      send(200, {
+        issuer: origin,
+        authorization_endpoint: `${origin}/authorize`,
+        token_endpoint: `${origin}/token`,
+        registration_endpoint: `${origin}/register`,
+        response_types_supported: ['code'],
+        grant_types_supported: ['authorization_code', 'refresh_token'],
+        token_endpoint_auth_methods_supported: ['none'],
+        code_challenge_methods_supported: ['S256'],
+      })
+      return
+    }
+    if (request.method === 'POST' && requestUrl.pathname === '/register') {
+      const chunks = []
+      for await (const chunk of request) chunks.push(Buffer.from(chunk))
+      send(201, { ...JSON.parse(Buffer.concat(chunks).toString('utf8')), client_id: 'packed-fixture-client' })
+      return
+    }
+    if (request.method === 'GET' && requestUrl.pathname === '/authorize') {
+      challenge = requestUrl.searchParams.get('code_challenge') ?? ''
+      const redirect = new URL(requestUrl.searchParams.get('redirect_uri') ?? '')
+      redirect.searchParams.set('code', 'packed-fixture-code')
+      redirect.searchParams.set('state', requestUrl.searchParams.get('state') ?? '')
+      response.writeHead(302, { location: redirect.toString() }); response.end(); return
+    }
+    if (request.method === 'POST' && requestUrl.pathname === '/token') {
+      const chunks = []
+      for await (const chunk of request) chunks.push(Buffer.from(chunk))
+      const form = new URLSearchParams(Buffer.concat(chunks).toString('utf8'))
+      const verifier = form.get('code_verifier') ?? ''
+      const derived = createHash('sha256').update(verifier).digest('base64url')
+      assert.equal(form.get('code'), 'packed-fixture-code')
+      assert.equal(derived, challenge)
+      send(200, { access_token: 'packed-access', refresh_token: 'packed-refresh', token_type: 'Bearer', expires_in: 300, scope: 'openid email profile offline_access' })
+      return
+    }
+    if (requestUrl.pathname !== '/mcp') { response.writeHead(404); response.end(); return }
+    if (request.headers.authorization !== 'Bearer packed-access') {
+      send(401, { error: 'unauthorized' }, { 'www-authenticate': `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp", scope="openid email profile offline_access"` })
+      return
+    }
+    if (request.method === 'GET') { response.writeHead(405); response.end(); return }
+    if (request.method !== 'POST') { response.writeHead(405); response.end(); return }
     const chunks = []
     for await (const chunk of request) chunks.push(Buffer.from(chunk))
     const message = JSON.parse(Buffer.concat(chunks).toString('utf8'))
@@ -62,10 +116,6 @@ async function strictFixture() {
       header: request.headers['mcp-protocol-version'],
       count: request.rawHeaders.filter((value, index) => index % 2 === 0 && value.toLowerCase() === 'mcp-protocol-version').length,
     })
-    const send = (status, value) => {
-      response.writeHead(status, value === undefined ? {} : { 'content-type': 'application/json' })
-      response.end(value === undefined ? undefined : JSON.stringify(value))
-    }
     if (message.method === 'initialize') send(200, { jsonrpc: '2.0', id: message.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {}, resources: {} }, serverInfo: { name: 'packed-runtime-fixture', version: '1' } } })
     else if (message.method === 'notifications/initialized') send(202)
     else if (message.method === 'tools/list') send(200, { jsonrpc: '2.0', id: message.id, result: { tools: [{ name: 'packed_fixture', inputSchema: { type: 'object' } }] } })
@@ -76,7 +126,42 @@ async function strictFixture() {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = server.address()
   assert(address !== null && typeof address !== 'string')
-  return { server, requests, endpoint: `http://127.0.0.1:${address.port}/mcp` }
+  origin = `http://127.0.0.1:${address.port}`
+  return { server, requests, endpoint: `${origin}/mcp` }
+}
+
+async function completeAuthorization(runtime) {
+  await waitUntil(runtime, () => runtime.stderr.includes('Please authorize this client by visiting:'), 'installed auth authorization URL')
+  const match = runtime.stderr.match(/Please authorize this client by visiting:\s*\n(http:\/\/[^\s]+)/)
+  assert(match?.[1], `authorization URL missing\n${runtime.stderr}`)
+  const authorization = await fetch(match[1], { redirect: 'manual' })
+  assert.equal(authorization.status, 302)
+  const callback = authorization.headers.get('location')
+  assert(callback, 'authorization response omitted callback')
+  const deadline = Date.now() + 2_000
+  while (true) {
+    try {
+      const response = await fetch(callback)
+      assert(response.ok)
+      return
+    } catch (error) {
+      if (Date.now() > deadline) throw error
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+  }
+}
+
+async function persistedAuthFiles(configDirectory) {
+  const versions = await readdir(configDirectory, { withFileTypes: true })
+  const version = versions.find((entry) => entry.isDirectory())
+  assert(version, 'upstream auth version directory missing')
+  const directory = path.join(configDirectory, version.name)
+  const names = await readdir(directory)
+  const client = names.find((name) => name.includes('client_info'))
+  const tokens = names.find((name) => name.includes('tokens'))
+  assert(client, 'persisted dynamic client registration missing')
+  assert(tokens, 'persisted tokens missing')
+  return [path.join(directory, client), path.join(directory, tokens)]
 }
 
 try {
@@ -141,15 +226,30 @@ globalThis.fetch = (input, init) => {
     NO_COLOR: '1',
   }
   const binRoot = path.join(install, 'node_modules', '.bin')
+  const expectedConfig = path.join(state, 'auth')
 
   const auth = launch(path.join(binRoot, 'mcp-stdio-auth'), [], install, runtimeEnvironment)
+  await completeAuthorization(auth)
   await waitUntil(auth, () => auth.stderr.includes('Requesting tools list...') && auth.stderr.includes('Received message:'), 'installed auth diagnostic transport')
-  auth.child.kill('SIGTERM')
+  const authFilesBeforeExit = await persistedAuthFiles(expectedConfig)
+  const persistedClient = JSON.parse(await readFile(authFilesBeforeExit[0], 'utf8'))
+  const persistedTokens = JSON.parse(await readFile(authFilesBeforeExit[1], 'utf8'))
+  assert.equal(persistedClient.client_id, 'packed-fixture-client')
+  assert.equal(persistedTokens.access_token, 'packed-access')
+  assert.equal(persistedTokens.refresh_token, 'packed-refresh')
+  if (process.platform !== 'win32') {
+    for (const directory of [state, expectedConfig, path.dirname(authFilesBeforeExit[0])]) assert.equal((await lstat(directory)).mode & 0o777, 0o700)
+    for (const file of authFilesBeforeExit) assert.equal((await lstat(file)).mode & 0o777, 0o600)
+  }
+  auth.child.kill('SIGINT')
   const authExit = await waitExit(auth)
-  assert.equal(authExit.code, 143, `installed auth bin did not propagate SIGTERM semantics\n${auth.stdout}\n${auth.stderr}`)
+  assert.deepEqual(authExit, { code: 0, signal: null }, `installed auth bin did not complete the documented Ctrl-C cleanup\n${auth.stdout}\n${auth.stderr}`)
   assert.equal(auth.stdout, '', 'installed auth bin wrote diagnostics to stdout')
   assert.match(auth.stderr, /Connected successfully!/)
   assert.match(auth.stderr, /Requesting tools list/)
+  if (process.platform !== 'win32') {
+    for (const file of await persistedAuthFiles(expectedConfig)) assert.equal((await lstat(file)).mode & 0o777, 0o600)
+  }
 
   const proxy = launch(path.join(binRoot, 'mcp-stdio'), [], install, runtimeEnvironment)
   await waitUntil(proxy, () => proxy.stderr.includes('Local STDIO server running'), 'installed stdio wrapper startup')
@@ -165,7 +265,6 @@ globalThis.fetch = (input, init) => {
   assert([0, 143].includes(proxyExit.code), `installed wrapper did not supervise SIGTERM cleanly: ${JSON.stringify(proxyExit)}`)
 
   const environmentRecords = (await readFile(environmentRecord, 'utf8')).trim().split('\n').map(JSON.parse)
-  const expectedConfig = path.join(state, 'auth')
   for (const entry of ['proxy.js', 'client.js']) {
     assert(environmentRecords.some((record) => record.argv.some((argument) => argument.endsWith(`/mcp-remote/dist/${entry}`)) && record.config === expectedConfig), `installed wrapper did not spawn ${entry} with private state`)
   }
