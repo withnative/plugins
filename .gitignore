@@ -5,3 +5,7 @@
 __pycache__/
 *.py[cod]
 .DS_Store
+
+node_modules/
+packages/mcp-stdio/dist/
+packages/mcp-stdio/*.tgz

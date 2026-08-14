@@ -170,6 +170,13 @@ Run the repository checks with:
 python3 scripts/validate.py
 ```
 
+## Command-based MCP clients
+
+Clients that support only command-based stdio MCP servers can use the separately versioned
+[`@withnative/mcp-stdio`](packages/mcp-stdio/README.md) compatibility package. It routes to
+the same hosted Native MCP and keeps every marketplace manifest HTTP-only. Documentation and
+configuration pin an exact package version.
+
 ## License
 
 Except where otherwise noted, the contents of this repository—including JSON and other
