@@ -14,7 +14,7 @@ its supported plugin surfaces.
 Paste this into Claude or ChatGPT/Codex, on desktop or CLI:
 
 ```text
-Open https://github.com/withnative/plugins and follow the setup guide.
+Open https://github.com/withnative/plugins and follow the setup guide for the Native plugin.
 ```
 
 ### For agents following this guide

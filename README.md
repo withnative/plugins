@@ -25,7 +25,7 @@ package provides product metadata, one entry skill, and an authenticated connect
 Give this instruction to Claude or ChatGPT/Codex, on desktop or CLI:
 
 ```text
-Open https://github.com/withnative/plugins and follow the setup guide.
+Open https://github.com/withnative/plugins and follow the setup guide for the Native plugin.
 ```
 
 The agent should identify the client it is running in, install Native using that client's
