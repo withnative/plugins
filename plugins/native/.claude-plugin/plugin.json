@@ -1,0 +1,19 @@
+{
+  "name": "native",
+  "version": "0.1.0",
+  "description": "Recover context and continue durable work through Native's hosted MCP service.",
+  "author": {
+    "name": "Native",
+    "url": "https://www.withnative.ai/"
+  },
+  "homepage": "https://personal.withnative.ai/",
+  "repository": "https://github.com/withnative/plugins",
+  "keywords": [
+    "native",
+    "workspace",
+    "context",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

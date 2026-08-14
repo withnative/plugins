@@ -1,0 +1,7 @@
+interface:
+  display_name: "Enter your Native workspace"
+  short_description: "Recover context and continue durable work."
+  default_prompt: "Use $enter to recover the relevant context in my Native workspace and help me continue this work."
+
+policy:
+  allow_implicit_invocation: true

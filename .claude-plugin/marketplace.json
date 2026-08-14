@@ -1,0 +1,21 @@
+{
+  "name": "withnative",
+  "owner": {
+    "name": "Native"
+  },
+  "description": "First-party Native plugins for durable work with AI agents",
+  "plugins": [
+    {
+      "name": "native",
+      "source": "./plugins/native",
+      "description": "Recover context and continue durable work through Native's hosted MCP service.",
+      "category": "Productivity",
+      "tags": [
+        "workspace",
+        "context",
+        "agents",
+        "mcp"
+      ]
+    }
+  ]
+}
