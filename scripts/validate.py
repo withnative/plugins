@@ -3,10 +3,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-"""Validate the first-party Native plugin catalogues and thin package contract."""
+"""Validate the marketplace-owned catalogue contract."""
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import re
@@ -16,25 +17,16 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PLUGIN = ROOT / "plugins" / "native"
-ENDPOINT = "https://plugin.withnative.ai/mcp"
-DESCRIPTION = (
+NATIVE_DESCRIPTION = (
+    "Keep the context behind your work fresh, connected and useful across your agents."
+)
+NATIVE_MANIFEST_DESCRIPTION = (
     "Recover context and continue durable work through Native's hosted MCP service."
 )
-SURF_DESCRIPTION = (
-    "Use Surf's current learning framework through its stateless MCP server"
-)
-CODEX_SURF_SOURCE = {
-    "source": "git-subdir",
-    "url": "https://github.com/withnative/surf.git",
-    "path": "./plugins/surf",
-    "ref": "main",
-}
-CLAUDE_SURF_SOURCE = {**CODEX_SURF_SOURCE, "path": "plugins/surf"}
-DEFAULT_PROMPT = (
-    "Use $enter to recover the relevant context in my Native workspace and help me "
-    "continue this work."
-)
+SURF_DESCRIPTION = "Learn to surf the waves of AI and continually adapt how you work as AI changes."
+NATIVE_URL = "https://github.com/withnative/native-plugin.git"
+SURF_URL = "https://github.com/withnative/surf.git"
+NATIVE_REF = "bf2504030bf714acf5ab954c5f057deef9748951"
 MPL_2_0_SHA256 = "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
 MPL_NOTICE = (
     "This Source Code Form is subject to the terms of the Mozilla Public\n"
@@ -45,24 +37,27 @@ HASH_NOTICE = "\n".join(f"# {line}" for line in MPL_NOTICE.splitlines()) + "\n"
 HTML_NOTICE = f"<!--\n{MPL_NOTICE}\n-->\n"
 
 
-def load_json(path: Path) -> dict[str, Any]:
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise AssertionError(f"{path.relative_to(ROOT)} is not valid JSON: {exc}") from exc
-    assert isinstance(value, dict), f"{path.relative_to(ROOT)} must contain an object"
-    return value
-
-
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AssertionError(f"{path} is not valid JSON: {exc}") from exc
+    require(isinstance(value, dict), f"{path} must contain an object")
+    return value
+
+
+def git_source(url: str, path: str, ref: str = "main") -> dict[str, str]:
+    return {"source": "git-subdir", "url": url, "path": path, "ref": ref}
+
+
 def validate_license() -> None:
-    license_digest = hashlib.sha256((ROOT / "LICENSE").read_bytes()).hexdigest()
     require(
-        license_digest == MPL_2_0_SHA256,
+        hashlib.sha256((ROOT / "LICENSE").read_bytes()).hexdigest() == MPL_2_0_SHA256,
         "LICENSE must contain the canonical, unmodified MPL 2.0 text",
     )
 
@@ -74,169 +69,184 @@ def validate_license() -> None:
         "2.0](LICENSE) (`MPL-2.0`)." in readme,
         "README must declare MPL-2.0 coverage for commentless formats",
     )
-    require(
-        "Copyright © 2026 AI Native Work, Inc." in readme,
-        "README copyright notice drifted",
-    )
+    require("Copyright © 2026 AI Native Work, Inc." in readme, "copyright notice drifted")
 
-    notice_prefixes = {
+    prefixes = {
         ROOT / ".github" / "workflows" / "validate.yml": HASH_NOTICE,
         ROOT / ".gitignore": HASH_NOTICE,
-        PLUGIN / "skills" / "enter" / "agents" / "openai.yaml": HASH_NOTICE,
         ROOT / "scripts" / "validate.py": f"#!/usr/bin/env python3\n{HASH_NOTICE}",
     }
-    for path, prefix in notice_prefixes.items():
-        require(
-            path.read_text(encoding="utf-8").startswith(prefix),
-            f"{path.relative_to(ROOT)} is missing the MPL Exhibit A notice",
-        )
-
-
-def validate_manifests() -> None:
-    codex = load_json(PLUGIN / ".codex-plugin" / "plugin.json")
-    claude = load_json(PLUGIN / ".claude-plugin" / "plugin.json")
-    common = {
-        "name": "native",
-        "version": "0.1.0",
-        "description": DESCRIPTION,
-        "author": {"name": "Native", "url": "https://www.withnative.ai/"},
-        "homepage": "https://personal.withnative.ai/",
-        "repository": "https://github.com/withnative/plugins",
-        "keywords": ["native", "workspace", "context", "mcp"],
-        "skills": "./skills/",
-        "mcpServers": "./.mcp.json",
-    }
-    for key, value in common.items():
-        require(codex.get(key) == value, f"Codex manifest has unexpected {key}")
-        require(claude.get(key) == value, f"Claude manifest has unexpected {key}")
-
-    interface = codex.get("interface", {})
-    require(interface.get("displayName") == "Native", "Codex display name must be Native")
-    require(
-        interface.get("shortDescription") == "Recover context and continue durable work.",
-        "Codex short description drifted",
-    )
-    require(interface.get("developerName") == "Native", "Codex developer must be Native")
-    require(interface.get("category") == "Productivity", "Codex category drifted")
-    require(interface.get("capabilities") == ["Read", "Write"], "Capabilities drifted")
-    require(interface.get("defaultPrompt") == [DEFAULT_PROMPT], "Default prompt drifted")
-
-    forbidden = {"license", "privacyPolicyURL", "termsOfServiceURL", "hooks", "apps"}
-    require(not (forbidden & codex.keys()), "Codex manifest contains deferred/forbidden fields")
-    require(not (forbidden & claude.keys()), "Claude manifest contains deferred/forbidden fields")
-
-
-def validate_mcp() -> None:
-    mcp = load_json(PLUGIN / ".mcp.json")
-    require(
-        mcp == {"mcpServers": {"native": {"type": "http", "url": ENDPOINT}}},
-        "MCP declaration must contain only the canonical hosted Native server",
-    )
+    for path, prefix in prefixes.items():
+        require(path.read_text(encoding="utf-8").startswith(prefix), f"{path} lacks MPL notice")
 
 
 def validate_marketplaces() -> None:
     codex = load_json(ROOT / ".agents" / "plugins" / "marketplace.json")
-    require(codex.get("name") == "withnative", "Codex marketplace identity drifted")
-    require(codex.get("interface") == {"displayName": "Native"}, "Codex display drifted")
-    entries = codex.get("plugins")
     require(
-        isinstance(entries, list) and len(entries) == 2,
-        "Codex catalogue must list two plugins",
-    )
-    require(
-        entries[0]
+        codex
         == {
-            "name": "native",
-            "source": {"source": "local", "path": "./plugins/native"},
-            "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
-            "category": "Productivity",
+            "name": "withnative",
+            "interface": {"displayName": "Plugins by Native"},
+            "plugins": [
+                {
+                    "name": "native",
+                    "source": git_source(NATIVE_URL, "./plugins/native", NATIVE_REF),
+                    "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+                    "category": "Productivity",
+                },
+                {
+                    "name": "surf",
+                    "source": git_source(SURF_URL, "./plugins/surf"),
+                    "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+                    "category": "Productivity",
+                },
+            ],
         },
-        "Codex catalogue entry drifted",
-    )
-    require(
-        entries[1]
-        == {
-            "name": "surf",
-            "source": CODEX_SURF_SOURCE,
-            "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
-            "category": "Productivity",
-        },
-        "Codex Surf catalogue entry drifted",
+        "Codex marketplace contract drifted",
     )
 
     claude = load_json(ROOT / ".claude-plugin" / "marketplace.json")
-    require(claude.get("name") == "withnative", "Claude marketplace identity drifted")
-    require(claude.get("owner") == {"name": "Native"}, "Claude owner drifted")
-    entries = claude.get("plugins")
     require(
-        isinstance(entries, list) and len(entries) == 2,
-        "Claude catalogue must list two plugins",
-    )
-    require(entries[0].get("name") == "native", "Claude plugin identity drifted")
-    require(entries[0].get("source") == "./plugins/native", "Claude source path drifted")
-    require(entries[0].get("description") == DESCRIPTION, "Claude description drifted")
-    require(
-        entries[1]
+        claude
         == {
-            "name": "surf",
-            "source": CLAUDE_SURF_SOURCE,
-            "description": SURF_DESCRIPTION,
-            "category": "Productivity",
-            "tags": ["learning", "practice", "agents", "mcp"],
+            "name": "withnative",
+            "owner": {"name": "Native"},
+            "description": "Open-source plugins by Native, built around human outcomes",
+            "plugins": [
+                {
+                    "name": "native",
+                    "source": git_source(NATIVE_URL, "plugins/native", NATIVE_REF),
+                    "description": NATIVE_DESCRIPTION,
+                    "category": "Productivity",
+                    "tags": ["workspace", "context", "agents", "mcp"],
+                },
+                {
+                    "name": "surf",
+                    "source": git_source(SURF_URL, "plugins/surf"),
+                    "description": SURF_DESCRIPTION,
+                    "category": "Productivity",
+                    "tags": ["learning", "practice", "agents", "mcp"],
+                },
+            ],
         },
-        "Claude Surf catalogue entry drifted",
+        "Claude marketplace contract drifted",
+    )
+
+    sources = [entry["source"] for manifest in (codex, claude) for entry in manifest["plugins"]]
+    require(len(sources) == 4, "marketplaces must contain exactly two entries each")
+    require(all(source["source"] == "git-subdir" for source in sources), "all sources must be remote")
+    require(
+        sources[0]["path"] == f"./{sources[2]['path']}"
+        and sources[1]["path"] == f"./{sources[3]['path']}",
+        "Codex and Claude source paths must differ only by the leading ./",
     )
 
 
-def validate_skill() -> None:
-    skill_path = PLUGIN / "skills" / "enter" / "SKILL.md"
-    skill = skill_path.read_text(encoding="utf-8")
-    match = re.match(r"\A---\n(?P<header>.*?)\n---\n(?P<body>.*)\Z", skill, re.DOTALL)
-    require(match is not None, "Skill must contain YAML frontmatter")
-    header = match.group("header")
-    body = match.group("body")
-    require(re.search(r"^name: enter$", header, re.MULTILINE) is not None, "Skill name drifted")
-    for phrase in ("save this for later", "React Native", "another system"):
-        require(phrase in header, f"Skill activation boundary is missing {phrase!r}")
-    for phrase in ("quickstart", "bootstrap", "https://github.com/withnative/plugins"):
-        require(phrase in body, f"Skill handoff is missing {phrase!r}")
+def validate_readme() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    required = (
+        "# Plugins by Native",
+        "A small index of open-source plugins for working with AI, built around human outcomes.",
+        "Learn to surf the waves of AI. Surf helps you continually adapt how you work as AI changes.",
+        "Keep the context behind your work fresh, connected and useful across your agents.",
+        "[Native](https://www.withnative.ai/) is the publisher.",
+        "Adding `withnative/plugins` to Claude or\nChatGPT/Codex makes both available, but installs neither one.",
+        "Each product repository owns its documentation, plugin package, releases, and support.",
+    )
+    for text in required:
+        require(text in readme, f"README is missing accepted copy: {text!r}")
 
-    presentation = (skill_path.parent / "agents" / "openai.yaml").read_text(encoding="utf-8")
-    for phrase in (
-        'display_name: "Enter your Native workspace"',
-        'short_description: "Recover context and continue durable work."',
-        f'default_prompt: "{DEFAULT_PROMPT}"',
-        "allow_implicit_invocation: true",
-    ):
-        require(phrase in presentation, f"OpenAI presentation metadata is missing {phrase!r}")
+    prompts = re.findall(r"```text\n(.*?)\n```", readme, re.DOTALL)
+    require(
+        prompts
+        == [
+            "Use the install guide at https://github.com/withnative/surf to help me get started with Surf.",
+            "Use the install guide at https://github.com/withnative/native-plugin to help me get started with Native.",
+        ],
+        "README must contain one accepted setup prompt per product",
+    )
+    require(readme.count("```") == 4, "README must not accumulate additional fenced guidance")
+
+    lower = readme.lower()
+    forbidden = (
+        "hyve",
+        "native core",
+        "native ce",
+        "mcp-stdio",
+        "stdio",
+        "docs/plugin-installation.md",
+        "packaged in this repository",
+        "this repository owns the native package",
+    )
+    for text in forbidden:
+        require(text not in lower, f"README contains stale product guidance: {text!r}")
 
 
-def validate_thin_boundary() -> None:
-    forbidden_names = {".app.json", "hooks", "hooks.json"}
-    for path in PLUGIN.rglob("*"):
-        require(path.name not in forbidden_names, f"Thin package contains forbidden path {path}")
-        if path.is_file():
-            text = path.read_text(encoding="utf-8")
-            require("[TODO:" not in text, f"Placeholder remains in {path.relative_to(ROOT)}")
-            require("staging.plugin.withnative.ai" not in text, "Static package must use production URL")
+def validate_repository_boundary() -> None:
+    require(not (ROOT / "docs" / "plugin-installation.md").exists(), "local setup guide remains")
+    require(not (ROOT / "packages" / "mcp-stdio").exists(), "local stdio adapter remains")
+    local_native = ROOT / "plugins" / "native"
+    require(
+        not local_native.exists() or not any(path.is_file() for path in local_native.rglob("*")),
+        "local Native package remains",
+    )
+    gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    require("mcp-stdio" not in gitignore and "node_modules" not in gitignore, "stale ignores remain")
+
+
+def validate_remote_native(repository: Path) -> None:
+    plugin = repository.resolve() / "plugins" / "native"
+    codex = load_json(plugin / ".codex-plugin" / "plugin.json")
+    claude = load_json(plugin / ".claude-plugin" / "plugin.json")
+    require(codex.get("name") == claude.get("name") == "native", "remote plugin name drifted")
+    version = codex.get("version")
+    require(
+        isinstance(version, str)
+        and re.fullmatch(r"\d+\.\d+\.\d+", version) is not None
+        and claude.get("version") == version,
+        "remote plugin versions must be matching semantic versions",
+    )
+    expected = {
+        "description": NATIVE_MANIFEST_DESCRIPTION,
+        "author": {"name": "Native", "url": "https://www.withnative.ai/"},
+        "repository": "https://github.com/withnative/native-plugin",
+        "skills": "./skills/",
+        "mcpServers": "./.mcp.json",
+    }
+    for key, value in expected.items():
+        require(codex.get(key) == value, f"remote Codex metadata has unexpected {key}")
+        require(claude.get(key) == value, f"remote Claude metadata has unexpected {key}")
+    require(
+        load_json(plugin / ".mcp.json")
+        == {"mcpServers": {"native": {"type": "http", "url": "https://plugin.withnative.ai/mcp"}}},
+        "remote Native MCP metadata drifted",
+    )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--native-plugin-dir",
+        type=Path,
+        help="optional checkout of withnative/native-plugin for marketplace-facing metadata checks",
+    )
+    return parser.parse_args()
 
 
 def main() -> int:
-    checks = (
-        validate_license,
-        validate_manifests,
-        validate_mcp,
-        validate_marketplaces,
-        validate_skill,
-        validate_thin_boundary,
-    )
+    args = parse_args()
     try:
-        for check in checks:
-            check()
+        validate_license()
+        validate_marketplaces()
+        validate_readme()
+        validate_repository_boundary()
+        if args.native_plugin_dir is not None:
+            validate_remote_native(args.native_plugin_dir)
     except (AssertionError, OSError, UnicodeDecodeError) as exc:
         print(f"validation failed: {exc}", file=sys.stderr)
         return 1
-    print("Native plugin package validation passed")
+    suffix = " with remote Native metadata" if args.native_plugin_dir is not None else ""
+    print(f"Marketplace validation passed{suffix}")
     return 0
 
 

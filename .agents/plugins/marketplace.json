@@ -1,14 +1,16 @@
 {
   "name": "withnative",
   "interface": {
-    "displayName": "Native"
+    "displayName": "Plugins by Native"
   },
   "plugins": [
     {
       "name": "native",
       "source": {
-        "source": "local",
-        "path": "./plugins/native"
+        "source": "git-subdir",
+        "url": "https://github.com/withnative/native-plugin.git",
+        "path": "./plugins/native",
+        "ref": "bf2504030bf714acf5ab954c5f057deef9748951"
       },
       "policy": {
         "installation": "AVAILABLE",

@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-name: Validate plugin catalogue
+name: Validate marketplace
 
 on:
   pull_request:
@@ -18,8 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check out Native plugin metadata
+        uses: actions/checkout@v4
+        with:
+          repository: withnative/native-plugin
+          ref: bf2504030bf714acf5ab954c5f057deef9748951
+          path: .validation/native-plugin
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Validate catalogue and Native package
-        run: python3 scripts/validate.py
+      - name: Validate marketplace contract
+        run: python3 scripts/validate.py --native-plugin-dir .validation/native-plugin
+      - name: Validate canonical Native package
+        run: python3 .validation/native-plugin/scripts/validate.py

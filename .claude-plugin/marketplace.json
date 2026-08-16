@@ -3,12 +3,17 @@
   "owner": {
     "name": "Native"
   },
-  "description": "First-party Native plugins for durable work and learning with AI agents",
+  "description": "Open-source plugins by Native, built around human outcomes",
   "plugins": [
     {
       "name": "native",
-      "source": "./plugins/native",
-      "description": "Recover context and continue durable work through Native's hosted MCP service.",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/withnative/native-plugin.git",
+        "path": "plugins/native",
+        "ref": "bf2504030bf714acf5ab954c5f057deef9748951"
+      },
+      "description": "Keep the context behind your work fresh, connected and useful across your agents.",
       "category": "Productivity",
       "tags": [
         "workspace",
@@ -25,7 +30,7 @@
         "path": "plugins/surf",
         "ref": "main"
       },
-      "description": "Use Surf's current learning framework through its stateless MCP server",
+      "description": "Learn to surf the waves of AI and continually adapt how you work as AI changes.",
       "category": "Productivity",
       "tags": [
         "learning",
