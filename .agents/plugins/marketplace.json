@@ -10,7 +10,7 @@
         "source": "git-subdir",
         "url": "https://github.com/withnative/native-plugin.git",
         "path": "./plugins/native",
-        "ref": "bf2504030bf714acf5ab954c5f057deef9748951"
+        "ref": "v0.1.1"
       },
       "policy": {
         "installation": "AVAILABLE",
