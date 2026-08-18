@@ -26,7 +26,7 @@ NATIVE_MANIFEST_DESCRIPTION = (
 SURF_DESCRIPTION = "Learn to surf the waves of AI and continually adapt how you work as AI changes."
 NATIVE_URL = "https://github.com/withnative/native-plugin.git"
 SURF_URL = "https://github.com/withnative/surf.git"
-NATIVE_REF = "bf2504030bf714acf5ab954c5f057deef9748951"
+NATIVE_REF = "v0.1.1"
 MPL_2_0_SHA256 = "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
 MPL_NOTICE = (
     "This Source Code Form is subject to the terms of the Mozilla Public\n"
@@ -205,6 +205,11 @@ def validate_remote_native(repository: Path) -> None:
         and re.fullmatch(r"\d+\.\d+\.\d+", version) is not None
         and claude.get("version") == version,
         "remote plugin versions must be matching semantic versions",
+    )
+    require(
+        NATIVE_REF == f"v{version}",
+        f"marketplace ref {NATIVE_REF!r} must be the release tag for remote "
+        f"plugin version {version!r}",
     )
     expected = {
         "description": NATIVE_MANIFEST_DESCRIPTION,
