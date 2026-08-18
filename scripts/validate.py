@@ -206,6 +206,11 @@ def validate_remote_native(repository: Path) -> None:
         and claude.get("version") == version,
         "remote plugin versions must be matching semantic versions",
     )
+    require(
+        NATIVE_REF == f"v{version}",
+        f"marketplace ref {NATIVE_REF!r} must be the release tag for remote "
+        f"plugin version {version!r}",
+    )
     expected = {
         "description": NATIVE_MANIFEST_DESCRIPTION,
         "author": {"name": "Native", "url": "https://www.withnative.ai/"},
