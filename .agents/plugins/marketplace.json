@@ -24,7 +24,7 @@
         "source": "git-subdir",
         "url": "https://github.com/withnative/surf.git",
         "path": "./plugins/surf",
-        "ref": "main"
+        "ref": "32a35d9f186f7e0871a056d67b6ae919f160e0b0"
       },
       "policy": {
         "installation": "AVAILABLE",

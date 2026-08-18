@@ -97,7 +97,7 @@ def validate_marketplaces() -> None:
                 },
                 {
                     "name": "surf",
-                    "source": git_source(SURF_URL, "./plugins/surf"),
+                    "source": git_source(SURF_URL, "./plugins/surf", "32a35d9f186f7e0871a056d67b6ae919f160e0b0"),
                     "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
                     "category": "Productivity",
                 },
@@ -123,7 +123,7 @@ def validate_marketplaces() -> None:
                 },
                 {
                     "name": "surf",
-                    "source": git_source(SURF_URL, "plugins/surf"),
+                    "source": git_source(SURF_URL, "plugins/surf", "32a35d9f186f7e0871a056d67b6ae919f160e0b0"),
                     "description": SURF_DESCRIPTION,
                     "category": "Productivity",
                     "tags": ["learning", "practice", "agents", "mcp"],
