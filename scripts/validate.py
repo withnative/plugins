@@ -10,7 +10,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -228,12 +230,68 @@ def validate_remote_native(repository: Path) -> None:
     )
 
 
+def validate_remote_refs() -> None:
+    """Every marketplace ref must resolve the way client installers resolve it.
+
+    Client installers clone a `git-subdir` source with `git clone --branch <ref>`,
+    which accepts only `refs/heads/*` and `refs/tags/*`. CI checkouts resolve by
+    fetch instead, which additionally accepts a bare commit SHA -- so a ref can
+    pass every other check here and still be uninstallable. `git ls-remote
+    --heads --tags` matches exactly the refs `--branch` accepts, making it a
+    faithful one-round-trip proxy for the real operation.
+    """
+    manifests = (
+        load_json(ROOT / ".claude-plugin" / "marketplace.json"),
+        load_json(ROOT / ".agents" / "plugins" / "marketplace.json"),
+    )
+    checked: list[tuple[str, str]] = []
+    for manifest in manifests:
+        for entry in manifest["plugins"]:
+            source = entry["source"]
+            pair = (source["url"], source["ref"])
+            if pair not in checked:
+                checked.append(pair)
+
+    for url, ref in checked:
+        try:
+            completed = subprocess.run(
+                ["git", "ls-remote", "--heads", "--tags", "--exit-code", "--", url, ref],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                # Never block on a credential prompt: with output captured the
+                # prompt is invisible, so this would present as a silent stall.
+                env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise AssertionError(f"could not resolve {ref!r} against {url}: {exc}") from exc
+        if completed.returncode == 0:
+            continue
+        # git exits 2 for "matched nothing" and 128 for unreachable/auth failures.
+        # Conflating them would report a network blip as a bad ref.
+        if completed.returncode == 2:
+            raise AssertionError(
+                f"marketplace ref {ref!r} is not a branch or tag on {url}, so the "
+                f"`git clone --branch {ref}` that client installers run will fail "
+                f"even though a CI checkout of it would succeed"
+            )
+        raise AssertionError(
+            f"could not reach {url} to resolve {ref!r} (git exited "
+            f"{completed.returncode}): {completed.stderr.strip()}"
+        )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--native-plugin-dir",
         type=Path,
         help="optional checkout of withnative/native-plugin for marketplace-facing metadata checks",
+    )
+    parser.add_argument(
+        "--check-remote-refs",
+        action="store_true",
+        help="resolve every marketplace ref against its remote (requires network)",
     )
     return parser.parse_args()
 
@@ -247,10 +305,17 @@ def main() -> int:
         validate_repository_boundary()
         if args.native_plugin_dir is not None:
             validate_remote_native(args.native_plugin_dir)
-    except (AssertionError, OSError, UnicodeDecodeError) as exc:
+        if args.check_remote_refs:
+            validate_remote_refs()
+    except (AssertionError, KeyError, OSError, TypeError, UnicodeDecodeError) as exc:
         print(f"validation failed: {exc}", file=sys.stderr)
         return 1
-    suffix = " with remote Native metadata" if args.native_plugin_dir is not None else ""
+    notes = []
+    if args.native_plugin_dir is not None:
+        notes.append("remote Native metadata")
+    if args.check_remote_refs:
+        notes.append("resolvable remote refs")
+    suffix = f" with {' and '.join(notes)}" if notes else ""
     print(f"Marketplace validation passed{suffix}")
     return 0
 

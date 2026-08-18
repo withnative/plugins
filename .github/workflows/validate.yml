@@ -18,16 +18,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Resolve the Native ref from the marketplace manifest
+        id: native-ref
+        run: |
+          ref="$(jq -er '.plugins[] | select(.name == "native") | .source.ref' \
+            .claude-plugin/marketplace.json)"
+          # Heredoc form: newline-safe, unlike `echo "ref=$ref"`.
+          {
+            echo "ref<<GITHUB_OUTPUT_EOF"
+            echo "$ref"
+            echo "GITHUB_OUTPUT_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Native marketplace ref: $ref"
       - name: Check out Native plugin metadata
         uses: actions/checkout@v4
         with:
           repository: withnative/native-plugin
-          ref: v0.1.1
+          ref: ${{ steps.native-ref.outputs.ref }}
           path: .validation/native-plugin
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Validate marketplace contract
-        run: python3 scripts/validate.py --native-plugin-dir .validation/native-plugin
+        run: |
+          python3 scripts/validate.py \
+            --native-plugin-dir .validation/native-plugin \
+            --check-remote-refs
       - name: Validate canonical Native package
         run: python3 .validation/native-plugin/scripts/validate.py
