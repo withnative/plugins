@@ -23,7 +23,12 @@ jobs:
         run: |
           ref="$(jq -er '.plugins[] | select(.name == "native") | .source.ref' \
             .claude-plugin/marketplace.json)"
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          # Heredoc form: newline-safe, unlike `echo "ref=$ref"`.
+          {
+            echo "ref<<GITHUB_OUTPUT_EOF"
+            echo "$ref"
+            echo "GITHUB_OUTPUT_EOF"
+          } >> "$GITHUB_OUTPUT"
           echo "Native marketplace ref: $ref"
       - name: Check out Native plugin metadata
         uses: actions/checkout@v4

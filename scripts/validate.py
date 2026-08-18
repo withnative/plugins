@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -254,18 +255,29 @@ def validate_remote_refs() -> None:
     for url, ref in checked:
         try:
             completed = subprocess.run(
-                ["git", "ls-remote", "--heads", "--tags", "--exit-code", url, ref],
+                ["git", "ls-remote", "--heads", "--tags", "--exit-code", "--", url, ref],
                 capture_output=True,
                 text=True,
                 timeout=60,
+                # Never block on a credential prompt: with output captured the
+                # prompt is invisible, so this would present as a silent stall.
+                env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
             )
         except (OSError, subprocess.SubprocessError) as exc:
             raise AssertionError(f"could not resolve {ref!r} against {url}: {exc}") from exc
-        require(
-            completed.returncode == 0,
-            f"marketplace ref {ref!r} is not a branch or tag on {url}, so the "
-            f"`git clone --branch {ref}` that client installers run will fail "
-            f"even though a CI checkout of it would succeed",
+        if completed.returncode == 0:
+            continue
+        # git exits 2 for "matched nothing" and 128 for unreachable/auth failures.
+        # Conflating them would report a network blip as a bad ref.
+        if completed.returncode == 2:
+            raise AssertionError(
+                f"marketplace ref {ref!r} is not a branch or tag on {url}, so the "
+                f"`git clone --branch {ref}` that client installers run will fail "
+                f"even though a CI checkout of it would succeed"
+            )
+        raise AssertionError(
+            f"could not reach {url} to resolve {ref!r} (git exited "
+            f"{completed.returncode}): {completed.stderr.strip()}"
         )
 
 
@@ -295,7 +307,7 @@ def main() -> int:
             validate_remote_native(args.native_plugin_dir)
         if args.check_remote_refs:
             validate_remote_refs()
-    except (AssertionError, OSError, UnicodeDecodeError) as exc:
+    except (AssertionError, KeyError, OSError, TypeError, UnicodeDecodeError) as exc:
         print(f"validation failed: {exc}", file=sys.stderr)
         return 1
     notes = []
