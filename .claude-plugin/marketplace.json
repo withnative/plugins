@@ -11,7 +11,7 @@
         "source": "git-subdir",
         "url": "https://github.com/withnative/native-plugin.git",
         "path": "plugins/native",
-        "ref": "v0.1.1"
+        "ref": "v0.1.3"
       },
       "description": "Keep the context behind your work fresh, connected and useful across your agents.",
       "category": "Productivity",
