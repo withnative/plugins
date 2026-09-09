@@ -28,8 +28,17 @@ Keep the context behind your work fresh, connected and useful across your agents
 Use the install guide at https://github.com/withnative/native-plugin to help me get started with Native.
 ```
 
-Give the relevant prompt to Claude or ChatGPT/Codex on a supported desktop or CLI client.
+Give the relevant prompt to Claude or ChatGPT/Codex. The linked product guide is the
+canonical setup path for both agents and people: an agent that can use the host CLI should
+inspect the current state, install the plugin itself, and verify it. When that is not
+possible, the guide explains the host's available approval or directory flow and says
+plainly when this marketplace is not visible there, with CLI or administrator-managed
+distribution as the next route. Native's guide also documents its direct MCP fallback and
+the capability difference from the packaged plugin.
+
 Each product repository owns its documentation, plugin package, releases, and support.
+This marketplace remains the concise discovery and routing surface so those instructions
+do not drift into a third copy here.
 
 ## About this repository
 
