@@ -31,10 +31,12 @@ Use the install guide at https://github.com/withnative/native-plugin to help me 
 Give the relevant prompt to Claude or ChatGPT/Codex. The linked product guide is the
 canonical setup path for both agents and people: an agent that can use the host CLI should
 inspect the current state, install the plugin itself, and verify it. When that is not
-possible, the guide explains the host's available approval or directory flow and says
-plainly when this marketplace is not visible there, with CLI or administrator-managed
-distribution as the next route. Native's guide also documents its direct MCP fallback and
-the capability difference from the packaged plugin.
+possible, ordinary users can add this marketplace in supported desktop interfaces before
+browsing its packages: use **Settings → Plugins → Add → Add a marketplace** in ChatGPT
+Desktop, or **Customize → Plugins → Personal plugins → + → Add marketplace** in Claude.
+The product guide gives the exact install flow and the CLI, administrator-managed, or
+direct MCP alternatives when a host or policy does not expose those controls. Native's
+guide also explains the capability difference between direct MCP and the packaged plugin.
 
 Each product repository owns its documentation, plugin package, releases, and support.
 This marketplace remains the concise discovery and routing surface so those instructions
