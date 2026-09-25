@@ -29,7 +29,7 @@ NATIVE_MANIFEST_DESCRIPTION = (
 SURF_DESCRIPTION = "Learn to surf the waves of AI and continually adapt how you work as AI changes."
 NATIVE_URL = "https://github.com/withnative/native-plugin.git"
 SURF_URL = "https://github.com/withnative/surf.git"
-NATIVE_REF = "v0.1.8"
+NATIVE_REF = "v0.1.10"
 MPL_2_0_SHA256 = "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
 MPL_NOTICE = (
     "This Source Code Form is subject to the terms of the Mozilla Public\n"
